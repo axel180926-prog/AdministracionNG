@@ -44,6 +44,7 @@ Fase 4: Despliegue                      ⏳ 0%
 ## ✅ FASE 1: COMPLETADA
 
 ### 1. Arquitectura del Sistema ✅
+
 - [x] Diagrama de flujos
 - [x] Estructura de carpetas
 - [x] 18 tablas de base de datos
@@ -51,11 +52,13 @@ Fase 4: Despliegue                      ⏳ 0%
 - [x] 10 tipos de negocio
 
 **Documentos**:
+
 - `ARQUITECTURA.md` - Visión general
 - `RECOMENDACIONES.md` - Mejores prácticas
 - `COPILOT_INSTRUCTIONS.md` - Reglas para Copilot
 
 ### 2. Backend Base ✅
+
 - [x] server.js - Express configurado
 - [x] config/database.js - Conexión PostgreSQL
 - [x] middleware/auth.js - Autenticación JWT
@@ -68,6 +71,7 @@ Fase 4: Despliegue                      ⏳ 0%
 **Archivos Creados**: 11
 
 ### 3. Frontend Base ✅
+
 - [x] Documentación React Native setup
 - [x] Ejemplo ConfigContext
 - [x] Ejemplo DynamicNavigator
@@ -76,6 +80,7 @@ Fase 4: Despliegue                      ⏳ 0%
 **Archivos Creados**: Documentación
 
 ### 4. GitHub ✅
+
 - [x] Repositorio creado
 - [x] SSH configurado
 - [x] 22 archivos subidos
@@ -85,6 +90,7 @@ Fase 4: Despliegue                      ⏳ 0%
 **URL**: https://github.com/sergio180926-max/negocio-admin_pwa
 
 ### 5. Documentación ✅
+
 - [x] COMIENZA_AQUI.md
 - [x] GITHUB_RAPIDO.md
 - [x] GITHUB_SETUP.md
@@ -103,19 +109,22 @@ Fase 4: Despliegue                      ⏳ 0%
 ## 🟡 FASE 2: EN PROGRESO - Backend APIs Críticas
 
 ### Prioridad 1️⃣: auth.js (CRÍTICO)
+
 **Estado**: ⏳ PENDIENTE
 
 **Rutas a Implementar**:
+
 ```javascript
-POST   /api/auth/register         // Crear cuenta
-POST   /api/auth/login            // Iniciar sesión  
-POST   /api/auth/logout           // Cerrar sesión
-POST   /api/auth/refresh          // Renovar token
-GET    /api/auth/me               // Datos del usuario actual
-POST   /api/auth/change-password  // Cambiar contraseña
+POST / api / auth / register; // Crear cuenta
+POST / api / auth / login; // Iniciar sesión
+POST / api / auth / logout; // Cerrar sesión
+POST / api / auth / refresh; // Renovar token
+GET / api / auth / me; // Datos del usuario actual
+POST / api / auth / change - password; // Cambiar contraseña
 ```
 
 **Requisitos**:
+
 - [ ] Validar email única
 - [ ] Hash de contraseña con bcrypt
 - [ ] Generar JWT tokens
@@ -127,9 +136,11 @@ POST   /api/auth/change-password  // Cambiar contraseña
 ---
 
 ### Prioridad 2️⃣: products.js (CRÍTICO)
+
 **Estado**: ⏳ PENDIENTE
 
 **Rutas a Implementar**:
+
 ```javascript
 GET    /api/products                    // Listar todos
 POST   /api/products                    // Crear producto
@@ -140,6 +151,7 @@ GET    /api/products/category/:catId    // Por categoría
 ```
 
 **Requisitos**:
+
 - [ ] Validar campos obligatorios (name, sale_price)
 - [ ] Filtrar por business_id
 - [ ] Crear/actualizar categoría si no existe
@@ -151,9 +163,11 @@ GET    /api/products/category/:catId    // Por categoría
 ---
 
 ### Prioridad 3️⃣: sales.js (CRÍTICO)
+
 **Estado**: ⏳ PENDIENTE
 
 **Rutas a Implementar**:
+
 ```javascript
 POST   /api/sales                       // Registrar venta
 GET    /api/sales                       // Listar ventas
@@ -164,6 +178,7 @@ GET    /api/sales/range/:from/:to       // Rango de fechas
 ```
 
 **Requisitos**:
+
 - [ ] Crear sale + sale_items en transacción
 - [ ] Llamar a inventoryService.updateStockAfterSale()
 - [ ] Validar stock disponible
@@ -176,20 +191,23 @@ GET    /api/sales/range/:from/:to       // Rango de fechas
 ---
 
 ### Prioridad 4️⃣: reports.js (IMPORTANTE)
+
 **Estado**: ⏳ PENDIENTE
 
 **Rutas a Implementar**:
+
 ```javascript
-GET    /api/reports/sales/daily         // Reporte diario
-GET    /api/reports/sales/weekly        // Reporte semanal
-GET    /api/reports/sales/monthly       // Reporte mensual
-GET    /api/reports/inventory           // Estado del inventario
-GET    /api/reports/top-products        // Top 10 productos vendidos
-GET    /api/reports/revenue             // Ingresos totales
-GET    /api/reports/cash-flow           // Flujo de efectivo
+GET / api / reports / sales / daily; // Reporte diario
+GET / api / reports / sales / weekly; // Reporte semanal
+GET / api / reports / sales / monthly; // Reporte mensual
+GET / api / reports / inventory; // Estado del inventario
+GET / api / reports / top - products; // Top 10 productos vendidos
+GET / api / reports / revenue; // Ingresos totales
+GET / api / reports / cash - flow; // Flujo de efectivo
 ```
 
 **Requisitos**:
+
 - [ ] Agregar datos por fecha
 - [ ] Calcular totales y promedios
 - [ ] Exportar CSV/PDF (opcional)
@@ -200,9 +218,11 @@ GET    /api/reports/cash-flow           // Flujo de efectivo
 ---
 
 ### Prioridad 5️⃣: users.js (IMPORTANTE)
+
 **Estado**: ⏳ PENDIENTE
 
 **Rutas a Implementar**:
+
 ```javascript
 GET    /api/users                       // Listar empleados
 POST   /api/users                       // Crear empleado
@@ -213,6 +233,7 @@ GET    /api/users/:id/sales             // Ventas por empleado
 ```
 
 **Requisitos**:
+
 - [ ] Validar roles (owner, admin, employee, cashier)
 - [ ] Gestión de permisos
 - [ ] Cambiar contraseña de otros (admin)
@@ -223,9 +244,11 @@ GET    /api/users/:id/sales             // Ventas por empleado
 ---
 
 ### Prioridad 6️⃣: customers.js (OPCIONAL)
+
 **Estado**: ⏳ PENDIENTE
 
 **Rutas a Implementar**:
+
 ```javascript
 GET    /api/customers                   // Listar clientes
 POST   /api/customers                   // Crear cliente
@@ -242,22 +265,26 @@ GET    /api/customers/:id/sales         // Compras del cliente
 ## 📱 FASE 3: Frontend Screens (PENDIENTE)
 
 ### LoginScreen ⏳
+
 - Integración con auth.js
 - Guardar token en AsyncStorage
 - Validar email/contraseña
 
 ### QuickSaleScreen ⏳
+
 - Cargar productos
 - Agregar a carrito
 - Calcular total
 - Registrar venta
 
 ### InventoryScreen ⏳
+
 - Mostrar inventario
 - Stock bajo (rojo)
 - Histórico de movimientos
 
 ### ReportsScreen ⏳
+
 - Dashboards
 - Gráficos
 - Reportes descargables
@@ -267,6 +294,7 @@ GET    /api/customers/:id/sales         // Compras del cliente
 ## 🚀 FASE 4: Despliegue (PENDIENTE)
 
 ### Setup VPS ⏳
+
 ```bash
 # SSH sin contraseña configurado ✅
 ssh root@31.97.43.51
@@ -280,12 +308,14 @@ ssh root@31.97.43.51
 ```
 
 ### Deploy Backend ⏳
+
 - [ ] Crear BD en VPS
 - [ ] Subir código
 - [ ] Configurar .env
 - [ ] Iniciar con PM2
 
 ### Publicar APK ⏳
+
 - [ ] Build de React Native
 - [ ] Subir a Play Store
 
@@ -296,6 +326,7 @@ ssh root@31.97.43.51
 ### FASE 2 - Backend APIs
 
 #### auth.js
+
 - [ ] Endpoint `/api/auth/register`
 - [ ] Endpoint `/api/auth/login`
 - [ ] Endpoint `/api/auth/logout`
@@ -305,6 +336,7 @@ ssh root@31.97.43.51
 - [ ] Documentación
 
 #### products.js
+
 - [ ] Endpoint `/api/products` GET
 - [ ] Endpoint `/api/products` POST
 - [ ] Endpoint `/api/products/:id` GET/PUT/DELETE
@@ -313,6 +345,7 @@ ssh root@31.97.43.51
 - [ ] Tests unitarios
 
 #### sales.js
+
 - [ ] Endpoint `/api/sales` POST
 - [ ] Endpoint `/api/sales` GET
 - [ ] Endpoint `/api/sales/:id` GET
@@ -321,17 +354,20 @@ ssh root@31.97.43.51
 - [ ] Tests unitarios
 
 #### reports.js
+
 - [ ] Reportes diarios/semanales
 - [ ] Análisis de inventario
 - [ ] Top productos
 - [ ] Tests unitarios
 
 #### users.js
+
 - [ ] Gestión de empleados
 - [ ] Control de roles
 - [ ] Tests unitarios
 
 #### customers.js (Opcional)
+
 - [ ] Gestión de clientes
 - [ ] Historial de compras
 
@@ -340,12 +376,14 @@ ssh root@31.97.43.51
 ## 🔧 Configuración Actual
 
 ### Git & GitHub
+
 - ✅ Repositorio: `negocio-admin_pwa`
 - ✅ SSH configurado con ed25519
 - ✅ Branch: `main`
 - ✅ Commits: 2 (inicial + Copilot instructions)
 
 ### VPS Hostinger
+
 - ✅ IP: `31.97.43.51`
 - ✅ SSH sin contraseña: Configurado
 - ⏳ Node.js: Pendiente
@@ -353,6 +391,7 @@ ssh root@31.97.43.51
 - ⏳ PM2: Pendiente
 
 ### Documentación
+
 - ✅ Copilot Instructions: Listo
 - ✅ Reglas de seguridad: Documentadas
 - ✅ Ejemplos de código: Incluidos
@@ -363,17 +402,20 @@ ssh root@31.97.43.51
 ## 🎯 Próximos Pasos Inmediatos
 
 ### Hoy
+
 1. [ ] Revisar COPILOT_INSTRUCTIONS.md
 2. [ ] Empezar con auth.js
 3. [ ] Crear tests para auth
 
 ### Esta Semana
+
 1. [ ] Completar auth.js
 2. [ ] Completar products.js
 3. [ ] Completar sales.js
 4. [ ] Testing local
 
 ### Próxima Semana
+
 1. [ ] Setup VPS
 2. [ ] Deploy backend a VPS
 3. [ ] Iniciar Frontend
@@ -383,20 +425,20 @@ ssh root@31.97.43.51
 
 ## 📊 Estadísticas del Proyecto
 
-| Concepto | Cantidad | Estado |
-|----------|----------|--------|
-| Documentos | 10 | ✅ |
-| Líneas de documentación | 3,500+ | ✅ |
-| Archivos backend | 11 | ✅ |
-| Tablas de BD | 18 | ✅ |
-| Módulos | 18 | ✅ |
-| Tipos de negocio | 10 | ✅ |
-| Rutas auth.js | 5 | ⏳ |
-| Rutas products.js | 6 | ⏳ |
-| Rutas sales.js | 6 | ⏳ |
-| Rutas reports.js | 7 | ⏳ |
-| Rutas users.js | 6 | ⏳ |
-| Pantallas frontend | 4 | ⏳ |
+| Concepto                | Cantidad | Estado |
+| ----------------------- | -------- | ------ |
+| Documentos              | 10       | ✅     |
+| Líneas de documentación | 3,500+   | ✅     |
+| Archivos backend        | 11       | ✅     |
+| Tablas de BD            | 18       | ✅     |
+| Módulos                 | 18       | ✅     |
+| Tipos de negocio        | 10       | ✅     |
+| Rutas auth.js           | 5        | ⏳     |
+| Rutas products.js       | 6        | ⏳     |
+| Rutas sales.js          | 6        | ⏳     |
+| Rutas reports.js        | 7        | ⏳     |
+| Rutas users.js          | 6        | ⏳     |
+| Pantallas frontend      | 4        | ⏳     |
 
 ---
 
@@ -423,16 +465,19 @@ ssh root@31.97.43.51
 ## 🤝 Cómo Usar Este Archivo
 
 **Para Copilot**:
+
 - Menciona este archivo cuando generes código
 - Busca la sección relevante (auth.js, products.js, etc.)
 - Sigue los requisitos listados
 
 **Para Tracking**:
+
 - Marca items con ✅ cuando termines
 - Actualiza el estado de las fases
 - Agrega nuevos requisitos conforme los identifiques
 
 **Para Contexto**:
+
 - Lee este archivo antes de empezar cada sesión
 - Entiende qué fase estamos en
 - Sabe qué está completado y qué falta
