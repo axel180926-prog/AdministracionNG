@@ -2,7 +2,7 @@
 
 **Estado Actual**: 🟢 Fase 1 Completa | 🟡 Fase 2 En Progreso
 
-**Repositorio**: https://github.com/sergio180926-max/negocio-admin_pwa
+**Repositorio**: https://github.com/axel180926-prog/AdministracionNG
 
 **VPS Hostinger**: `root@31.97.43.51`
 
