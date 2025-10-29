@@ -1,0 +1,103 @@
+{
+  "timestamp": "2025-10-29T13:29:15.346Z",
+  "version": "1.0.0",
+  "totalRules": 8,
+  "criticalRules": 5,
+  "rules": [
+    {
+      "id": "rule-001",
+      "title": "Aislamiento de Datos por Negocio",
+      "rule": "NUNCA usar req.body.businessId → SIEMPRE usar req.user.businessId",
+      "severity": "CRITICAL",
+      "affected": [
+        "backend",
+        "routes",
+        "middleware"
+      ]
+    },
+    {
+      "id": "rule-002",
+      "title": "Filtrado de Queries",
+      "rule": "NUNCA hacer queries sin WHERE business_id → SIEMPRE filtrar por business_id",
+      "severity": "CRITICAL",
+      "affected": [
+        "backend",
+        "database",
+        "queries"
+      ]
+    },
+    {
+      "id": "rule-003",
+      "title": "Validación en Backend",
+      "rule": "NUNCA validar solo en frontend → SIEMPRE validar en backend",
+      "severity": "CRITICAL",
+      "affected": [
+        "backend",
+        "routes",
+        "security"
+      ]
+    },
+    {
+      "id": "rule-004",
+      "title": "Transacciones en Inventario",
+      "rule": "NUNCA hacer cambios de inventario sin transacciones → SIEMPRE usar BEGIN → COMMIT/ROLLBACK",
+      "severity": "CRITICAL",
+      "affected": [
+        "backend",
+        "inventory",
+        "database"
+      ]
+    },
+    {
+      "id": "rule-005",
+      "title": "Stock Nunca Negativo",
+      "rule": "NUNCA permitir stock negativo → SIEMPRE validar stock disponible antes de restar",
+      "severity": "CRITICAL",
+      "affected": [
+        "backend",
+        "inventory",
+        "validation"
+      ]
+    },
+    {
+      "id": "rule-006",
+      "title": "Estructura de Archivos",
+      "rule": "SIEMPRE mantener estructura: routes → middleware → services → database",
+      "severity": "HIGH",
+      "affected": [
+        "backend",
+        "organization"
+      ]
+    },
+    {
+      "id": "rule-007",
+      "title": "Manejo de Errores",
+      "rule": "SIEMPRE retornar { success, message, data, error } en cada endpoint",
+      "severity": "HIGH",
+      "affected": [
+        "backend",
+        "responses"
+      ]
+    },
+    {
+      "id": "rule-008",
+      "title": "Documentación de Endpoints",
+      "rule": "SIEMPRE documentar: método, ruta, autenticación requerida, parámetros, respuesta",
+      "severity": "MEDIUM",
+      "affected": [
+        "documentation",
+        "backend"
+      ]
+    }
+  ],
+  "metadata": {
+    "project": "Administración Multi-Negocio",
+    "phase": "Fase 2: Backend APIs",
+    "checklistBefore": [
+      "✅ Leer PROJECT_INDEX.md",
+      "✅ Memorizar reglas críticas",
+      "✅ Revisar ejemplos en COPILOT_INSTRUCTIONS.md",
+      "✅ Entender la estructura del proyecto"
+    ]
+  }
+}

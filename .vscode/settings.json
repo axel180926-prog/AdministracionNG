@@ -6,5 +6,21 @@
   },
   "github.copilot.enable": {
     "*": true
+  },
+  "[project]": {
+    "rulesVersion": "1.0.0",
+    "criticalRulesCount": 5,
+    "lastUpdated": "2025-10-29T13:29:15.360Z",
+    "rulesFile": ".vscode/rules-config.json",
+    "checklistBeforeStart": [
+      "Leer PROJECT_INDEX.md",
+      "Revisar COPILOT_INSTRUCTIONS.md",
+      "Memorizar 5 reglas críticas"
+    ]
+  },
+  "github.copilot.editor.codex.codeblockLanguageExtractor": true,
+  "github.copilot.advanced": {
+    "inlineSuggestCount": 5,
+    "debug.testOverridePrometheusPort": false
   }
 }
