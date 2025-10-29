@@ -4,25 +4,41 @@
   "description": "API REST para sistema de administración multi-negocios",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
-    "db:migrate": "node scripts/migrate.js",
-    "db:seed": "node scripts/seed.js",
-    "db:reset": "node scripts/reset.js"
+    "start": "node dist/server.js",
+    "build": "tsc",
+    "dev": "nodemon --exec ts-node src/server.ts",
+    "test": "jest",
+    "lint": "eslint src/**/*.ts",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "db:migrate": "ts-node scripts/migrate.ts",
+    "db:seed": "ts-node scripts/seed.ts",
+    "db:reset": "ts-node scripts/reset.ts"
   },
-  "keywords": ["business", "admin", "api", "rest"],
+  "keywords": [
+    "business",
+    "admin",
+    "api",
+    "rest"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2",
-    "pg": "^8.11.0",
-    "cors": "^2.8.5",
-    "jsonwebtoken": "^9.0.2",
+    "axios": "^1.6.0",
     "bcrypt": "^5.1.1",
-    "dotenv": "^16.3.1",
     "compression": "^1.7.4",
-    "multer": "^1.4.5-lts.1",
-    "axios": "^1.6.0"
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^8.2.0",
+    "express-validator": "^7.3.0",
+    "glob": "^10.3.10",
+    "helmet": "^8.1.0",
+    "ioredis": "^5.8.2",
+    "jsonwebtoken": "^9.0.2",
+    "lru-cache": "^10.0.0",
+    "multer": "^2.0.0-rc.4",
+    "pg": "^8.11.0",
+    "rimraf": "^5.0.5"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
