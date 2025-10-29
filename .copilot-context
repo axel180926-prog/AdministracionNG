@@ -1,0 +1,308 @@
+## Contexto del Proyecto para Copilot
+
+### 📱 Descripción General
+Sistema de administración de negocios multi-modular que se adapta dinámicamente según el tipo de negocio (Restaurante, Panadería, Pollería, Taquería, Carnicería, Heladería, Tamalera, etc.).
+
+### 🎯 Características Principales
+1. **Módulos Dinámicos**: Cada negocio activa solo los módulos que necesita
+2. **Sincronización en Tiempo Real**: Cambios en ajustes se reflejan inmediatamente
+3. **Multi-negocios**: Datos 100% aislados por negocio
+4. **Inventario Automático**: Las ventas actualizan stock automáticamente
+5. **Historial Completo**: Se registra todo cambio en inventory_movements
+
+### 🏗️ Stack Tecnológico
+- **Backend**: Node.js 20 + Express + PostgreSQL
+- **Frontend**: React Native + Expo + Context API
+- **Autenticación**: JWT (7 días de expiración)
+- **Despliegue**: VPS Hostinger con PM2 + Nginx
+
+### 📁 Estructura Principal
+```
+AdministracionNG/
+├── backend/              # API REST
+│   ├── server.js        # Punto de entrada
+│   ├── config/
+│   ├── middleware/
+│   ├── routes/
+│   ├── services/
+│   └── database/
+├── frontend/            # React Native
+│   ├── App.js
+│   ├── contexts/
+│   ├── navigation/
+│   ├── screens/
+│   └── services/
+├── ARQUITECTURA.md      # Visión general
+└── RECOMENDACIONES.md   # Mejores prácticas
+```
+
+### 🔑 Conceptos Clave
+
+#### ConfigContext (🌟 MÁS IMPORTANTE)
+```javascript
+// Ubicación: frontend/contexts/ConfigContext.js
+// Propósito: Sincronizar configuración del negocio
+// Contiene: modules activos, colores, settings, etc.
+// Se recarga cuando: usuario cambia ajustes en SettingsScreen
+// Responsable de: DynamicNavigator sepa qué pantallas mostrar
+
+useConfig() retorna:
+{
+  config: { business, settings, modules, enabledModules },
+  loading: boolean,
+  error: string,
+  isModuleActive: (code) => boolean,
+  reloadConfig: () => Promise
+}
+```
+
+#### DynamicNavigator (🌟 MUY IMPORTANTE)
+```javascript
+// Ubicación: frontend/navigation/DynamicNavigator.js
+// Propósito: Mostrar solo módulos activos
+// Lógica: Filtra MODULE_SCREENS según config.enabledModules
+// Re-renderiza cuando: ConfigContext cambia
+// Resultado: Bottom tab navigation adaptativa
+```
+
+#### InventoryService (🌟 CRÍTICO)
+```javascript
+// Ubicación: backend/services/inventoryService.js
+// Propósito: Actualizar stock con transacciones
+// Métodos principales:
+//   - updateStockAfterSale(saleItems, userId)
+//   - addStock(productId, quantity, userId)
+//   - getLowStockProducts(businessId)
+//   - getWeeklyInventoryReport(businessId)
+// Garantiza: Transacciones ACID, sin stock negativo
+```
+
+### 🔐 Reglas de Seguridad (CRÍTICAS)
+
+#### 1. Validación en Backend
+- SIEMPRE validar tipos de datos en backend
+- NUNCA confiar en req.body.businessId
+- Usar businessId del JWT token: req.user.businessId
+
+#### 2. Filtrado por Business
+- Cada query SQL DEBE tener `WHERE business_id = $1`
+- No hacer filtrado en frontend
+- Índice: CREATE INDEX idx_business ON tabla(business_id)
+
+#### 3. Autenticación
+- Token en Authorization header: "Bearer {token}"
+- Expiración: 7 días
+- Renovación: automática al login
+
+#### 4. Base de Datos
+- Foreign keys con ON DELETE CASCADE
+- Transacciones para operaciones multi-tabla
+- Rollback automático en error
+
+### 📊 Flujos Principales
+
+#### Flujo 1: Cambio de Módulos en Tiempo Real
+```
+1. Usuario en SettingsScreen activa/desactiva módulo
+2. POST /api/config/toggle-module envía cambio
+3. Backend actualiza business_modules en BD
+4. SettingsScreen llama reloadConfig()
+5. ConfigContext obtiene nueva config del API
+6. DynamicNavigator se re-renderiza
+7. App muestra/oculta pantallas según módulos
+```
+
+#### Flujo 2: Registro de Venta
+```
+1. Usuario en QuickSaleScreen agrega productos
+2. POST /api/sales envía carrito
+3. Backend crea sale + sale_items en transacción
+4. inventoryService.updateStockAfterSale() reduce stock
+5. inventory_movements registra cada cambio
+6. Frontend recibe confirmación
+7. App actualiza InventoryScreen (si está abierto)
+```
+
+#### Flujo 3: Inicialización de App
+```
+1. App.js verifica token en AsyncStorage
+2. Si existe → ConfigProvider carga config del API
+3. ConfigContext obtiene /api/config/business-config
+4. DynamicNavigator renderiza módulos activos
+5. Si no existe → muestra LoginScreen
+```
+
+### 🎯 Cuando Escribir Código
+
+#### En Backend (routes, services)
+```javascript
+// Patrón para TODA ruta protegida:
+router.post('/endpoint', authenticateToken, checkPermission(['owner', 'admin']), async (req, res) => {
+  try {
+    // 1. Validar input
+    // 2. Filtrar por business_id del token
+    // 3. Hacer cambios en BD
+    // 4. Retornar resultado
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+```
+
+#### En Frontend (screens, components)
+```javascript
+// Patrón para TODA pantalla:
+export default function ScreenName({ navigation }) {
+  const { config, isModuleActive } = useConfig();
+  const [state, setState] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  // Verificar que módulo está activo
+  if (!isModuleActive('module_code')) {
+    return <Text>Módulo no disponible</Text>;
+  }
+
+  // Resto del código
+}
+```
+
+### 🗄️ Tablas Principales de BD
+
+#### business_modules (⭐ CENTRAL)
+```sql
+- business_id: ID del negocio
+- module_id: ID del módulo
+- is_active: true/false (determina si se muestra en app)
+- custom_settings: JSONB con configuración del módulo
+```
+
+#### business_settings (⭐ CONFIGURACIÓN)
+```sql
+- business_id: ID del negocio
+- business_type_id: Tipo (restaurant, bakery, etc.)
+- primary_color, secondary_color: Tema de la app
+- enable_tax, tax_rate: Impuestos
+- table_count, enable_delivery, enable_loyalty_points: Features
+```
+
+#### inventory_movements (🔍 AUDITORÍA)
+```sql
+- product_id: Producto
+- user_id: Usuario que hizo el cambio
+- movement_type: 'sale', 'entry', 'adjustment', 'return'
+- quantity, previous_stock, new_stock: Cambio
+- reference_id: ID de la venta relacionada
+- created_at: Cuándo pasó
+```
+
+### 🌐 Endpoints API (Existentes)
+
+#### Configuración
+```
+GET  /api/config/business-config       → Obtener config completa ⭐
+GET  /api/config/business-types        → Tipos de negocio
+POST /api/config/toggle-module         → Cambiar módulo ⭐
+PUT  /api/config/business-settings     → Actualizar settings
+```
+
+#### Salud
+```
+GET  /api/health                       → Estado del servidor
+GET  /api/version                      → Versión del API
+```
+
+### 📝 Convenciones de Código
+
+#### Nombres
+- Componentes React: PascalCase (QuickSaleScreen.js)
+- Servicios: camelCase (inventoryService.js)
+- Constantes: UPPER_SNAKE_CASE (MAX_STOCK_ALERT)
+- Hooks: useHookName (useConfig.js)
+- Funciones async: nombreAccion (updateStockAfterSale)
+
+#### Documentación
+- Cada pantalla: JSDoc header con descripción, props, estado, flujo
+- Cada servicio: JSDoc header con métodos y transacciones
+- Cada ruta: qué hace, qué valida, qué retorna
+
+#### Errores
+- Backend: res.status(code).json({ error: 'mensaje' })
+- Frontend: Alert.alert('Título', 'mensaje de error')
+- Logs: console.error('Contexto:', error)
+
+### 🚀 Tipos de Negocio y Módulos
+
+#### Restaurante (✨ Completo)
+- quick_sale, inventory, tables, orders, waiters
+- delivery, kitchen_display, loyalty_program
+- sales_reports, employee_performance
+
+#### Pollería (Simple)
+- quick_sale, inventory, delivery, customers
+- sales_reports (delivery es opcional)
+
+#### Panadería (Producción)
+- quick_sale, inventory, production, recipes
+- customers, sales_reports, inventory_reports
+
+#### Taquería (Flexible)
+- quick_sale, inventory, (tables opcional)
+- delivery, customers, sales_reports
+
+#### Otros: Carnicería, Heladería, Tamalera, Abarrotes, Farmacia, Boutique
+
+### 🔧 Comandos Útiles
+
+#### Backend
+```bash
+npm run dev                    # Desarrollo con nodemon
+npm start                      # Producción
+npm run db:migrate             # Crear tablas
+npm run db:seed               # Cargar datos iniciales
+```
+
+#### Frontend
+```bash
+npx expo start                # Desarrollo
+npx expo start --clear        # Limpiar caché
+npm run lint                  # Verificar errores
+```
+
+#### VPS Hostinger
+```bash
+pm2 start server.js           # Iniciar
+pm2 logs business-api         # Ver logs
+pm2 restart business-api      # Reiniciar
+```
+
+### 📚 Archivos Clave a Consultar
+
+1. **ARQUITECTURA.md** - Visión general del sistema
+2. **RECOMENDACIONES.md** - Mejores prácticas detalladas
+3. **backend/README.md** - Instrucciones VPS
+4. **frontend/SETUP_REACT_NATIVE.md** - Setup React Native
+
+### ⚡ Lo Más Importante (Memorizar)
+
+1. **ConfigContext** es el corazón → recarga cuando cambian módulos
+2. **business_id** siempre en WHERE → seguridad
+3. **Inventario** con transacciones → rollback si falla
+4. **Módulos dinámicos** → no cargar si están desactivados
+5. **Validación en backend** → nunca confiar en frontend
+
+### 🎓 Para Que Copilot Genere Mejor Código
+
+Cuando Copilot genere código, debería:
+1. Incluir JSDoc headers
+2. Validar inputs en backend
+3. Filtrar por business_id
+4. Usar transacciones para múltiples cambios
+5. Manejo de errores estructurado
+6. Verificar módulo activo en frontend
+7. Usar ConfigContext para estado global
+8. Comentarios explicativos donde sea confuso
+
+---
+
+**Última actualización**: 2025-10-29
+**Versión**: 1.0.0
