@@ -5,6 +5,11 @@ require('dotenv').config();
 
 const { authenticateToken } = require('./middleware/auth');
 const configRoutes = require('./routes/config');
+const authRoutes = require('./routes/auth');
+const productsRoutes = require('./routes/products');
+const salesRoutes = require('./routes/sales');
+const reportsRoutes = require('./routes/reports');
+const usersRoutes = require('./routes/users');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,8 +33,15 @@ app.get('/api/version', (req, res) => {
   });
 });
 
+// Rutas públicas
+app.use('/api/auth', authRoutes);
+
 // Rutas protegidas
 app.use('/api/config', configRoutes);
+app.use('/api/products', productsRoutes);
+app.use('/api/sales', salesRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/users', usersRoutes);
 
 // Manejo de errores
 app.use((err, req, res, next) => {
