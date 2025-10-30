@@ -1,154 +1,155 @@
 const express = require('express');
-const db = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const reportsService = require('../services/reportsService');
 
 const router = express.Router();
 
-// Reporte por fecha
-router.get('/sales-by-date', authenticateToken, async (req, res) => {
+/**
+ * Middleware: Aplicar autenticación a todas las rutas
+ */
+router.use(authenticateToken);
+
+/**
+ * GET /api/reports/sales/daily
+ * Obtener ventas del día actual
+ */
+router.get('/sales/daily', async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const businessId = req.user.businessId;
+    const result = await reportsService.getDailySales(businessId);
 
-    if (!startDate || !endDate) {
-      return res.status(400).json({ error: 'startDate y endDate son requeridos' });
+    if (!result.success) {
+      return res.status(500).json({ error: result.error });
     }
-
-    const result = await db.query(
-      `SELECT 
-        s.sale_date,
-        COUNT(*) as total_sales,
-        SUM(s.quantity) as total_quantity,
-        SUM(s.total) as total_revenue
-      FROM sales s
-      WHERE s.sale_date BETWEEN $1 AND $2
-      GROUP BY s.sale_date
-      ORDER BY s.sale_date DESC`,
-      [startDate, endDate]
-    );
-
-    res.json(result.rows);
-  } catch (error) {
-    console.error('❌ Error en reporte por fecha:', error);
-    res.status(500).json({ error: 'Error en reporte por fecha' });
-  }
-});
-
-// Reporte por producto
-router.get('/sales-by-product', authenticateToken, async (req, res) => {
-  try {
-    const { startDate, endDate } = req.query;
-
-    let query = `SELECT 
-      p.id,
-      p.name,
-      p.sku,
-      COUNT(*) as times_sold,
-      SUM(s.quantity) as total_quantity,
-      SUM(s.total) as total_revenue,
-      AVG(s.unit_price) as avg_price
-    FROM sales s
-    LEFT JOIN products p ON s.product_id = p.id
-    WHERE 1=1`;
-
-    const params = [];
-
-    if (startDate) {
-      query += ` AND s.sale_date >= $${params.length + 1}`;
-      params.push(startDate);
-    }
-    if (endDate) {
-      query += ` AND s.sale_date <= $${params.length + 1}`;
-      params.push(endDate);
-    }
-
-    query += ` GROUP BY p.id, p.name, p.sku ORDER BY total_revenue DESC`;
-
-    const result = await db.query(query, params);
-    res.json(result.rows);
-  } catch (error) {
-    console.error('❌ Error en reporte por producto:', error);
-    res.status(500).json({ error: 'Error en reporte por producto' });
-  }
-});
-
-// Reporte por empleado
-router.get('/sales-by-employee', authenticateToken, async (req, res) => {
-  try {
-    const { startDate, endDate } = req.query;
-
-    let query = `SELECT 
-      u.id,
-      u.username,
-      u.full_name,
-      COUNT(*) as total_sales,
-      SUM(s.quantity) as total_quantity,
-      SUM(s.total) as total_revenue
-    FROM sales s
-    LEFT JOIN users u ON s.employee_id = u.id
-    WHERE 1=1`;
-
-    const params = [];
-
-    if (startDate) {
-      query += ` AND s.sale_date >= $${params.length + 1}`;
-      params.push(startDate);
-    }
-    if (endDate) {
-      query += ` AND s.sale_date <= $${params.length + 1}`;
-      params.push(endDate);
-    }
-
-    query += ` GROUP BY u.id, u.username, u.full_name ORDER BY total_revenue DESC`;
-
-    const result = await db.query(query, params);
-    res.json(result.rows);
-  } catch (error) {
-    console.error('❌ Error en reporte por empleado:', error);
-    res.status(500).json({ error: 'Error en reporte por empleado' });
-  }
-});
-
-// Resumen general
-router.get('/summary', authenticateToken, async (req, res) => {
-  try {
-    const { startDate, endDate } = req.query;
-
-    let query = `SELECT 
-      COUNT(*) as total_sales,
-      SUM(s.quantity) as total_quantity,
-      SUM(s.total) as total_revenue,
-      AVG(s.total) as avg_sale,
-      COUNT(DISTINCT s.employee_id) as total_employees
-    FROM sales s
-    WHERE 1=1`;
-
-    const params = [];
-
-    if (startDate) {
-      query += ` AND s.sale_date >= $${params.length + 1}`;
-      params.push(startDate);
-    }
-    if (endDate) {
-      query += ` AND s.sale_date <= $${params.length + 1}`;
-      params.push(endDate);
-    }
-
-    const salesResult = await db.query(query, params);
-
-    // Total productos
-    const productsResult = await db.query('SELECT COUNT(*) as total_products FROM products WHERE active = true');
-
-    // Total usuarios
-    const usersResult = await db.query('SELECT COUNT(*) as total_users FROM users WHERE active = true');
 
     res.json({
-      sales: salesResult.rows[0],
-      products: productsResult.rows[0],
-      users: usersResult.rows[0]
+      message: 'Reporte diario obtenido exitosamente',
+      report: result.data,
+      period: 'today'
     });
   } catch (error) {
-    console.error('❌ Error en resumen:', error);
-    res.status(500).json({ error: 'Error en resumen' });
+    console.error('❌ Error en GET /reports/sales/daily:', error);
+    res.status(500).json({ error: 'Error al obtener reporte diario' });
+  }
+});
+
+/**
+ * GET /api/reports/sales/weekly
+ * Obtener ventas de los últimos 7 días
+ */
+router.get('/sales/weekly', async (req, res) => {
+  try {
+    const businessId = req.user.businessId;
+    const result = await reportsService.getWeeklySales(businessId);
+
+    if (!result.success) {
+      return res.status(500).json({ error: result.error });
+    }
+
+    res.json({
+      message: 'Reporte semanal obtenido exitosamente',
+      report: result.data,
+      period: 'last_7_days'
+    });
+  } catch (error) {
+    console.error('❌ Error en GET /reports/sales/weekly:', error);
+    res.status(500).json({ error: 'Error al obtener reporte semanal' });
+  }
+});
+
+/**
+ * GET /api/reports/inventory
+ * Obtener resumen de inventario
+ */
+router.get('/inventory', async (req, res) => {
+  try {
+    const businessId = req.user.businessId;
+    const result = await reportsService.getInventorySummary(businessId);
+
+    if (!result.success) {
+      return res.status(500).json({ error: result.error });
+    }
+
+    res.json({
+      message: 'Resumen de inventario obtenido exitosamente',
+      inventory: result.data
+    });
+  } catch (error) {
+    console.error('❌ Error en GET /reports/inventory:', error);
+    res.status(500).json({ error: 'Error al obtener inventario' });
+  }
+});
+
+/**
+ * GET /api/reports/top-products
+ * Obtener top 10 productos más vendidos
+ */
+router.get('/top-products', async (req, res) => {
+  try {
+    const businessId = req.user.businessId;
+    const limit = Math.min(parseInt(req.query.limit) || 10, 100);
+
+    const result = await reportsService.getTopProducts(businessId, limit);
+
+    if (!result.success) {
+      return res.status(500).json({ error: result.error });
+    }
+
+    res.json({
+      message: 'Productos más vendidos obtenidos exitosamente',
+      products: result.data,
+      limit
+    });
+  } catch (error) {
+    console.error('❌ Error en GET /reports/top-products:', error);
+    res.status(500).json({ error: 'Error al obtener productos más vendidos' });
+  }
+});
+
+/**
+ * GET /api/reports/low-stock
+ * Obtener productos con bajo stock
+ */
+router.get('/low-stock', async (req, res) => {
+  try {
+    const businessId = req.user.businessId;
+    const result = await reportsService.getLowStockProducts(businessId);
+
+    if (!result.success) {
+      return res.status(500).json({ error: result.error });
+    }
+
+    res.json({
+      message: 'Productos con bajo stock obtenidos exitosamente',
+      products: result.data,
+      count: result.data.length
+    });
+  } catch (error) {
+    console.error('❌ Error en GET /reports/low-stock:', error);
+    res.status(500).json({ error: 'Error al obtener productos con bajo stock' });
+  }
+});
+
+/**
+ * GET /api/reports/metrics
+ * Obtener métricas generales del negocio
+ */
+router.get('/metrics', async (req, res) => {
+  try {
+    const businessId = req.user.businessId;
+    const result = await reportsService.getBusinessMetrics(businessId);
+
+    if (!result.success) {
+      return res.status(500).json({ error: result.error });
+    }
+
+    res.json({
+      message: 'Métricas del negocio obtenidas exitosamente',
+      metrics: result.data
+    });
+  } catch (error) {
+    console.error('❌ Error en GET /reports/metrics:', error);
+    res.status(500).json({ error: 'Error al obtener métricas' });
   }
 });
 
