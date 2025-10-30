@@ -8,6 +8,7 @@ import RegisterScreen from './src/screens/auth/RegisterScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import ProductsScreen from './src/screens/ProductsScreen';
 import SalesScreen from './src/screens/SalesScreen';
+import CreateSaleScreen from './src/screens/CreateSaleScreen';
 import InventoryScreen from './src/screens/InventoryScreen';
 import ReportsScreen from './src/screens/ReportsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
@@ -25,6 +26,32 @@ const AuthStack = () => {
     >
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
+    </Stack.Navigator>
+  );
+};
+
+// Stack de ventas con opción de crear venta
+const SalesStack = () => {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: true,
+      }}
+    >
+      <Stack.Screen
+        name="SalesList"
+        component={SalesScreen}
+        options={{
+          title: 'Ventas',
+        }}
+      />
+      <Stack.Screen
+        name="CreateSale"
+        component={CreateSaleScreen}
+        options={{
+          title: 'Nueva Venta',
+        }}
+      />
     </Stack.Navigator>
   );
 };
@@ -57,7 +84,7 @@ const AppStack = () => {
       />
       <Tab.Screen
         name="Sales"
-        component={SalesScreen}
+        component={SalesStack}
         options={{
           title: 'Ventas',
           tabBarLabel: 'Ventas',
