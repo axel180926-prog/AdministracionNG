@@ -1,168 +1,268 @@
 const db = require('../config/database');
 
-class InventoryService {
-  
-  // Actualizar inventario después de una venta
-  async updateStockAfterSale(saleItems, userId) {
-    const client = await db.pool.connect();
-    
-    try {
-      await client.query('BEGIN');
-      
-      for (const item of saleItems) {
-        // Obtener stock actual
-        const stockResult = await client.query(
-          'SELECT current_stock FROM inventory WHERE product_id = $1',
-          [item.product_id]
-        );
-        
-        if (stockResult.rows.length === 0) {
-          throw new Error(`Producto ${item.product_id} no tiene inventario`);
-        }
-        
-        const currentStock = stockResult.rows[0].current_stock;
-        const newStock = currentStock - item.quantity;
-        
-        if (newStock < 0) {
-          const productResult = await client.query(
-            'SELECT name FROM products WHERE id = $1',
-            [item.product_id]
-          );
-          throw new Error(
-            `❌ Stock insuficiente para ${productResult.rows[0].name}. ` +
-            `Disponible: ${currentStock}, Solicitado: ${item.quantity}`
-          );
-        }
-        
-        // Actualizar inventario
-        await client.query(
-          `UPDATE inventory 
-           SET current_stock = $1, last_updated = NOW() 
-           WHERE product_id = $2`,
-          [newStock, item.product_id]
-        );
-        
-        // Registrar movimiento
-        await client.query(
-          `INSERT INTO inventory_movements 
-           (product_id, user_id, movement_type, quantity, previous_stock, new_stock, reference_id, notes)
-           VALUES ($1, $2, 'sale', $3, $4, $5, $6, 'Venta automática')`,
-          [item.product_id, userId, item.quantity, currentStock, newStock, item.sale_id]
-        );
-      }
-      
-      await client.query('COMMIT');
-      return { success: true };
-      
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
+/**
+ * Obtener stock actual de un producto
+ */
+const getCurrentStock = async (productId) => {
+  try {
+    const result = await db.query(
+      'SELECT current_stock FROM inventory WHERE product_id = $1',
+      [productId]
+    );
+
+    if (result.rows.length === 0) {
+      return { success: false, error: 'Inventario no encontrado' };
     }
+
+    return { success: true, stock: result.rows[0].current_stock };
+  } catch (error) {
+    console.error('❌ Error en getCurrentStock:', error);
+    return { success: false, error: error.message };
   }
-  
-  // Agregar stock (entrada de inventario)
-  async addStock(productId, quantity, userId, notes = '') {
-    const client = await db.pool.connect();
-    
-    try {
-      await client.query('BEGIN');
-      
-      const stockResult = await client.query(
-        'SELECT current_stock FROM inventory WHERE product_id = $1',
-        [productId]
-      );
-      
-      let currentStock = 0;
-      if (stockResult.rows.length > 0) {
-        currentStock = stockResult.rows[0].current_stock;
-        
-        await client.query(
-          `UPDATE inventory 
-           SET current_stock = current_stock + $1, 
-               last_restock_date = NOW(),
-               last_updated = NOW()
-           WHERE product_id = $2`,
-          [quantity, productId]
-        );
-      } else {
-        await client.query(
-          `INSERT INTO inventory (product_id, current_stock, last_restock_date)
-           VALUES ($1, $2, NOW())`,
-          [productId, quantity]
-        );
-      }
-      
-      const newStock = currentStock + quantity;
-      
-      await client.query(
-        `INSERT INTO inventory_movements 
-         (product_id, user_id, movement_type, quantity, previous_stock, new_stock, notes)
-         VALUES ($1, $2, 'entry', $3, $4, $5, $6)`,
-        [productId, userId, quantity, currentStock, newStock, notes]
-      );
-      
-      await client.query('COMMIT');
-      return { success: true, newStock };
-      
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
+};
+
+/**
+ * Validar si hay stock disponible
+ */
+const validateStockAvailable = async (productId, requiredQuantity) => {
+  try {
+    const stockResult = await db.query(
+      'SELECT current_stock FROM inventory WHERE product_id = $1',
+      [productId]
+    );
+
+    if (stockResult.rows.length === 0) {
+      return { available: false, error: 'Producto no encontrado en inventario' };
     }
+
+    const currentStock = stockResult.rows[0].current_stock;
+
+    if (currentStock < requiredQuantity) {
+      return {
+        available: false,
+        error: `Stock insuficiente. Disponible: ${currentStock}, Requerido: ${requiredQuantity}`
+      };
+    }
+
+    return { available: true, currentStock };
+  } catch (error) {
+    console.error('❌ Error en validateStockAvailable:', error);
+    return { available: false, error: error.message };
   }
-  
-  // Obtener productos con stock bajo
-  async getLowStockProducts(businessId) {
+};
+
+/**
+ * Actualizar stock después de una venta (usar dentro de transacción)
+ * NO hace commit, el llamador es responsable de eso
+ */
+const updateStockAfterSale = async (client, productId, quantity, saleId) => {
+  try {
+    // Obtener stock actual
+    const stockResult = await client.query(
+      'SELECT current_stock FROM inventory WHERE product_id = $1 FOR UPDATE',
+      [productId]
+    );
+
+    if (stockResult.rows.length === 0) {
+      throw new Error('Producto no encontrado en inventario');
+    }
+
+    const previousStock = stockResult.rows[0].current_stock;
+    const newStock = previousStock - quantity;
+
+    if (newStock < 0) {
+      throw new Error(`Stock insuficiente para producto ID ${productId}. Disponible: ${previousStock}, Requerido: ${quantity}`);
+    }
+
+    // Actualizar inventario
+    await client.query(
+      'UPDATE inventory SET current_stock = $1, last_updated = NOW() WHERE product_id = $2',
+      [newStock, productId]
+    );
+
+    // Registrar movimiento
+    await client.query(
+      `INSERT INTO inventory_movements 
+       (product_id, movement_type, quantity, previous_stock, new_stock, reference_id, notes, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+      [productId, 'SALE', -quantity, previousStock, newStock, saleId, `Venta ID: ${saleId}`]
+    );
+
+    return { success: true, previousStock, newStock };
+  } catch (error) {
+    console.error('❌ Error en updateStockAfterSale:', error);
+    throw error;
+  }
+};
+
+/**
+ * Devolver stock después de cancelar venta (usar dentro de transacción)
+ */
+const updateStockAfterCancel = async (client, productId, quantity, saleId) => {
+  try {
+    // Obtener stock actual
+    const stockResult = await client.query(
+      'SELECT current_stock FROM inventory WHERE product_id = $1 FOR UPDATE',
+      [productId]
+    );
+
+    if (stockResult.rows.length === 0) {
+      throw new Error('Producto no encontrado en inventario');
+    }
+
+    const previousStock = stockResult.rows[0].current_stock;
+    const newStock = previousStock + quantity; // Devolver el stock
+
+    // Actualizar inventario
+    await client.query(
+      'UPDATE inventory SET current_stock = $1, last_updated = NOW() WHERE product_id = $2',
+      [newStock, productId]
+    );
+
+    // Registrar movimiento
+    await client.query(
+      `INSERT INTO inventory_movements 
+       (product_id, movement_type, quantity, previous_stock, new_stock, reference_id, notes, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+      [productId, 'SALE_CANCEL', quantity, previousStock, newStock, saleId, `Cancelación de venta ID: ${saleId}`]
+    );
+
+    return { success: true, previousStock, newStock };
+  } catch (error) {
+    console.error('❌ Error en updateStockAfterCancel:', error);
+    throw error;
+  }
+};
+
+/**
+ * Registrar movimiento de inventario manual
+ */
+const registerMovement = async (productId, movementType, quantity, notes = '') => {
+  try {
+    // Validar cantidad
+    if (quantity === 0) {
+      return { success: false, error: 'La cantidad debe ser diferente de 0' };
+    }
+
+    // Obtener stock actual
+    const stockResult = await db.query(
+      'SELECT current_stock FROM inventory WHERE product_id = $1',
+      [productId]
+    );
+
+    if (stockResult.rows.length === 0) {
+      return { success: false, error: 'Producto no encontrado en inventario' };
+    }
+
+    const previousStock = stockResult.rows[0].current_stock;
+    const newStock = previousStock + quantity; // quantity puede ser negativo
+
+    if (newStock < 0) {
+      return { success: false, error: `Stock no puede ser negativo. Disponible: ${previousStock}` };
+    }
+
+    // Actualizar
+    await db.query(
+      'UPDATE inventory SET current_stock = $1, last_updated = NOW() WHERE product_id = $2',
+      [newStock, productId]
+    );
+
+    // Registrar movimiento
+    await db.query(
+      `INSERT INTO inventory_movements 
+       (product_id, movement_type, quantity, previous_stock, new_stock, notes, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+      [productId, movementType, quantity, previousStock, newStock, notes]
+    );
+
+    return {
+      success: true,
+      movement: {
+        productId,
+        movementType,
+        quantity,
+        previousStock,
+        newStock
+      }
+    };
+  } catch (error) {
+    console.error('❌ Error en registerMovement:', error);
+    return { success: false, error: error.message };
+  }
+}
+/**
+ * Obtener historial de movimientos de un producto
+ */
+const getMovementHistory = async (businessId, productId, limit = 20, offset = 0) => {
+  try {
+    const result = await db.query(
+      `SELECT im.* FROM inventory_movements im
+       JOIN products p ON im.product_id = p.id
+       WHERE im.product_id = $1 AND p.business_id = $2
+       ORDER BY im.created_at DESC
+       LIMIT $3 OFFSET $4`,
+      [productId, businessId, limit, offset]
+    );
+
+    return {
+      success: true,
+      movements: result.rows
+    };
+  } catch (error) {
+    console.error('❌ Error en getMovementHistory:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Obtener resumen de inventario
+ */
+const getInventorySummary = async (businessId) => {
+  try {
     const result = await db.query(
       `SELECT 
-         p.id,
-         p.name,
-         p.sku,
-         i.current_stock,
-         p.min_stock,
-         c.name as category
-       FROM products p
-       LEFT JOIN inventory i ON p.id = i.product_id
-       LEFT JOIN categories c ON p.category_id = c.id
-       WHERE p.business_id = $1 
-         AND p.is_active = true
-         AND i.current_stock <= p.min_stock
+        p.id,
+        p.name,
+        p.sku,
+        i.current_stock,
+        p.min_stock,
+        (p.sale_price * i.current_stock) as total_value,
+        CASE 
+          WHEN i.current_stock <= p.min_stock THEN 'BAJO'
+          WHEN i.current_stock <= p.min_stock * 2 THEN 'MEDIO'
+          ELSE 'ALTO'
+        END as stock_level
+       FROM inventory i
+       JOIN products p ON i.product_id = p.id
+       WHERE p.business_id = $1 AND p.is_active = true
        ORDER BY i.current_stock ASC`,
       [businessId]
     );
-    
-    return result.rows;
-  }
-  
-  // Reporte de inventario semanal
-  async getWeeklyInventoryReport(businessId) {
-    const result = await db.query(
-      `SELECT 
-         p.name,
-         p.sku,
-         c.name as category,
-         i.current_stock,
-         p.min_stock,
-         COALESCE(SUM(CASE WHEN im.movement_type = 'sale' THEN im.quantity ELSE 0 END), 0) as sold_this_week,
-         COALESCE(SUM(CASE WHEN im.movement_type = 'entry' THEN im.quantity ELSE 0 END), 0) as added_this_week,
-         p.sale_price,
-         COALESCE(SUM(CASE WHEN im.movement_type = 'sale' THEN im.quantity ELSE 0 END), 0) * p.sale_price as revenue_this_week
-       FROM products p
-       LEFT JOIN inventory i ON p.id = i.product_id
-       LEFT JOIN categories c ON p.category_id = c.id
-       LEFT JOIN inventory_movements im ON p.id = im.product_id 
-         AND im.created_at >= NOW() - INTERVAL '7 days'
-       WHERE p.business_id = $1 AND p.is_active = true
-       GROUP BY p.id, p.name, p.sku, c.name, i.current_stock, p.min_stock, p.sale_price
-       ORDER BY sold_this_week DESC`,
-      [businessId]
-    );
-    
-    return result.rows;
-  }
-}
 
-module.exports = new InventoryService();
+    const totalValue = result.rows.reduce((sum, item) => sum + (item.total_value || 0), 0);
+    const lowStockItems = result.rows.filter(item => item.stock_level === 'BAJO').length;
+
+    return {
+      success: true,
+      summary: {
+        totalItems: result.rows.length,
+        totalValue,
+        lowStockItems,
+        items: result.rows
+      }
+    };
+  } catch (error) {
+    console.error('❌ Error en getInventorySummary:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+module.exports = {
+  getCurrentStock,
+  validateStockAvailable,
+  updateStockAfterSale,
+  updateStockAfterCancel,
+  registerMovement,
+  getMovementHistory,
+  getInventorySummary
+};
