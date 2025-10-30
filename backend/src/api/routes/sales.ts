@@ -1,13 +1,12 @@
-import express from 'express';
+import { Router } from 'express';
+import { SalesController } from '../controllers/sales.controller';
 
-const router = express.Router();
+const router = Router();
 
-router.get('/', (req, res) => {
-  res.json({ message: 'Get all sales' });
-});
-
-router.post('/', (req, res) => {
-  res.json({ message: 'Create sale' });
-});
+router.get('/', SalesController.getSales);
+router.get('/report', SalesController.getSalesReport);
+router.get('/:id', SalesController.getSaleById);
+router.post('/', SalesController.createSale);
+router.put('/:id/status', SalesController.updateSaleStatus);
 
 export default router;

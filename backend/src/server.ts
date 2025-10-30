@@ -11,6 +11,7 @@ import productsRoutes from './api/routes/products';
 import reportsRoutes from './api/routes/reports';
 import salesRoutes from './api/routes/sales';
 import usersRoutes from './api/routes/users';
+import inventoryRoutes from './api/routes/inventory';
 
 dotenv.config();
 
@@ -36,6 +37,7 @@ app.use('/api/products', productsRoutes);
 app.use('/api/sales', salesRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/inventory', inventoryRoutes);
 
 // Manejo de errores global
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
