@@ -1,103 +1,106 @@
 const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const db = require('../config/database');
+const { body, validationResult } = require('express-validator');
+const authService = require('../services/authService');
+const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
-const generateTokens = (userId, username, role) => {
-  const accessToken = jwt.sign(
-    { userId, username, role },
-    process.env.JWT_SECRET || 'your_secret_key',
-    { expiresIn: '1h' }
-  );
+/**
+ * POST /api/auth/register
+ * Registrar nuevo usuario
+ * Body: { email, password, firstName, lastName }
+ */
+router.post(
+  '/register',
+  [
+    body('email').isEmail().withMessage('Email inválido'),
+    body('password')
+      .isLength({ min: 8 })
+      .withMessage('Contraseña debe tener mínimo 8 caracteres'),
+    body('firstName').notEmpty().withMessage('Primer nombre requerido'),
+    body('lastName').notEmpty().withMessage('Apellido requerido')
+  ],
+  async (req, res) => {
+    try {
+      // Validar errores de validación
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ 
+          error: 'Validación fallida',
+          details: errors.array() 
+        });
+      }
 
-  const refreshToken = jwt.sign(
-    { userId, username },
-    process.env.JWT_REFRESH_SECRET || 'your_refresh_secret',
-    { expiresIn: '7d' }
-  );
+      const { email, password, firstName, lastName } = req.body;
 
-  return { accessToken, refreshToken };
-};
+      const result = await authService.registerUser(email, password, firstName, lastName);
 
-// Registro
-router.post('/register', async (req, res) => {
-  try {
-    const { username, email, password, fullName, role = 'employee' } = req.body;
+      if (!result.success) {
+        return res.status(409).json({ error: result.error });
+      }
 
-    if (!username || !email || !password) {
-      return res.status(400).json({ error: 'Username, email y password requeridos' });
+      res.status(201).json({
+        message: 'Usuario registrado exitosamente',
+        user: result.user,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken
+      });
+    } catch (error) {
+      console.error('❌ Error en register:', error);
+      res.status(500).json({ error: 'Error al registrar usuario' });
     }
-
-    const existingUser = await db.query('SELECT id FROM users WHERE username = $1 OR email = $2', [username, email]);
-    if (existingUser.rows.length > 0) {
-      return res.status(409).json({ error: 'Usuario o email ya existe' });
-    }
-
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    const result = await db.query(
-      'INSERT INTO users (username, email, password_hash, full_name, role) VALUES ($1, $2, $3, $4, $5) RETURNING id, username, email, role',
-      [username, email, passwordHash, fullName, role]
-    );
-
-    const user = result.rows[0];
-    const tokens = generateTokens(user.id, user.username, user.role);
-
-    res.status(201).json({
-      message: 'Usuario registrado exitosamente',
-      user,
-      ...tokens
-    });
-  } catch (error) {
-    console.error('❌ Error en register:', error);
-    res.status(500).json({ error: 'Error al registrar usuario' });
   }
-});
+);
 
-// Login
-router.post('/login', async (req, res) => {
-  try {
-    const { username, password } = req.body;
+/**
+ * POST /api/auth/login
+ * Iniciar sesión
+ * Body: { email, password }
+ */
+router.post(
+  '/login',
+  [
+    body('email').isEmail().withMessage('Email inválido'),
+    body('password').notEmpty().withMessage('Contraseña requerida')
+  ],
+  async (req, res) => {
+    try {
+      // Validar errores de validación
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ 
+          error: 'Validación fallida',
+          details: errors.array() 
+        });
+      }
 
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username y password requeridos' });
+      const { email, password } = req.body;
+
+      const result = await authService.loginUser(email, password);
+
+      if (!result.success) {
+        return res.status(401).json({ error: result.error });
+      }
+
+      res.json({
+        message: 'Login exitoso',
+        user: result.user,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken
+      });
+    } catch (error) {
+      console.error('❌ Error en login:', error);
+      res.status(500).json({ error: 'Error al iniciar sesión' });
     }
-
-    const result = await db.query('SELECT id, username, email, password_hash, role FROM users WHERE username = $1 OR email = $1', [username]);
-
-    if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Usuario no encontrado' });
-    }
-
-    const user = result.rows[0];
-    const passwordMatch = await bcrypt.compare(password, user.password_hash);
-
-    if (!passwordMatch) {
-      return res.status(401).json({ error: 'Contraseña incorrecta' });
-    }
-
-    const tokens = generateTokens(user.id, user.username, user.role);
-
-    res.json({
-      message: 'Login exitoso',
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role
-      },
-      ...tokens
-    });
-  } catch (error) {
-    console.error('❌ Error en login:', error);
-    res.status(500).json({ error: 'Error al iniciar sesión' });
   }
-});
+);
 
-// Refresh token
-router.post('/refresh', (req, res) => {
+/**
+ * POST /api/auth/refresh-token
+ * Renovar token de acceso usando refresh token
+ * Body: { refreshToken }
+ */
+router.post('/refresh-token', (req, res) => {
   try {
     const { refreshToken } = req.body;
 
@@ -105,23 +108,56 @@ router.post('/refresh', (req, res) => {
       return res.status(400).json({ error: 'Refresh token requerido' });
     }
 
-    jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || 'your_refresh_secret', (err, user) => {
-      if (err) {
-        return res.status(401).json({ error: 'Refresh token inválido' });
-      }
+    const result = authService.refreshAccessToken(refreshToken);
 
-      const newAccessToken = jwt.sign(
-        { userId: user.userId, username: user.username },
-        process.env.JWT_SECRET || 'your_secret_key',
-        { expiresIn: '1h' }
-      );
+    if (!result.success) {
+      return res.status(401).json({ error: 'Refresh token inválido o expirado' });
+    }
 
-      res.json({ accessToken: newAccessToken });
+    res.json({
+      message: 'Token renovado exitosamente',
+      accessToken: result.accessToken
     });
   } catch (error) {
-    console.error('❌ Error en refresh:', error);
+    console.error('❌ Error en refresh-token:', error);
     res.status(500).json({ error: 'Error al refrescar token' });
   }
+});
+
+/**
+ * GET /api/auth/me
+ * Obtener información del usuario logueado
+ * Requiere: Authorization header con token
+ */
+router.get('/me', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    const result = await authService.getUserById(userId);
+
+    if (!result.success) {
+      return res.status(404).json({ error: result.error });
+    }
+
+    res.json({
+      user: result.user
+    });
+  } catch (error) {
+    console.error('❌ Error en /me:', error);
+    res.status(500).json({ error: 'Error al obtener usuario' });
+  }
+});
+
+/**
+ * POST /api/auth/logout
+ * Logout (en cliente eliminar tokens del localStorage)
+ */
+router.post('/logout', authenticateToken, (req, res) => {
+  // En este caso es un logout "dummy" porque JWT es stateless
+  // En producción, podrías invalidar el token en una blacklist
+  res.json({
+    message: 'Logout exitoso. Elimina los tokens del cliente.'
+  });
 });
 
 module.exports = router;
