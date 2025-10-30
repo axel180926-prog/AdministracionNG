@@ -12,6 +12,7 @@ import reportsRoutes from './api/routes/reports';
 import salesRoutes from './api/routes/sales';
 import usersRoutes from './api/routes/users';
 import inventoryRoutes from './api/routes/inventory';
+import configRoutes from './api/routes/config';
 
 dotenv.config();
 
@@ -38,6 +39,7 @@ app.use('/api/sales', salesRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/config', configRoutes);
 
 // Manejo de errores global
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
