@@ -1,13 +1,16 @@
-import express from 'express';
+import { Router } from 'express';
+import { verifyToken, isAdmin } from '../middlewares/auth';
 
-const router = express.Router();
+const router = Router();
 
-router.get('/', (req, res) => {
-  res.json({ message: 'Get all users' });
+router.use(verifyToken);
+
+router.get('/', isAdmin, (req, res) => {
+  res.json({ success: true, message: 'Get all users' });
 });
 
-router.post('/', (req, res) => {
-  res.json({ message: 'Create user' });
+router.post('/', isAdmin, (req, res) => {
+  res.json({ success: true, message: 'Create user' });
 });
 
 export default router;

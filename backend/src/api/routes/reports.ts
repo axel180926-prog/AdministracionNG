@@ -1,9 +1,12 @@
-import express from 'express';
+import { Router } from 'express';
+import { verifyToken } from '../middlewares/auth';
 
-const router = express.Router();
+const router = Router();
+
+router.use(verifyToken);
 
 router.get('/', (req, res) => {
-  res.json({ message: 'Get all reports' });
+  res.json({ success: true, message: 'Get all reports' });
 });
 
 export default router;

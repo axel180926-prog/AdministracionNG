@@ -1,32 +1,55 @@
 import { NextFunction, Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
-import { User } from '../types';
+import { AuthService } from '../services/AuthService';
 
-interface AuthRequest extends Request {
-  user?: User;
-}
-
-export const verifyToken = (req: AuthRequest, res: Response, next: NextFunction): void => {
+export const verifyToken = (req: Request, res: Response, next: NextFunction): void => {
   const token = req.headers.authorization?.split(' ')[1];
 
   if (!token) {
-    res.status(401).json({ message: 'Token no proporcionado' });
+    res.status(401).json({ success: false, message: 'Token no proporcionado' });
     return;
   }
 
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as User;
-    req.user = decoded;
-    next();
-  } catch (error) {
-    res.status(401).json({ message: 'Token inválido' });
+  const decoded = AuthService.verifyToken(token);
+
+  if (!decoded) {
+    res.status(401).json({ success: false, message: 'Token inválido o expirado' });
+    return;
   }
+
+  (req as any).user = decoded;
+  next();
 };
 
-export const isAdmin = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  if (req.user?.role !== 'admin') {
-    res.status(403).json({ message: 'Acceso denegado: se requiere rol de administrador' });
+export const isAdmin = (req: Request, res: Response, next: NextFunction): void => {
+  const user = (req as any).user;
+  
+  if (!user) {
+    res.status(401).json({ success: false, message: 'No autenticado' });
     return;
   }
+
+  if (user.role !== 'admin') {
+    res.status(403).json({ success: false, message: 'Acceso denegado: se requiere rol de administrador' });
+    return;
+  }
+
+  next();
+};
+
+export const isOwner = (req: Request, res: Response, next: NextFunction): void => {
+  const user = (req as any).user;
+
+  if (!user) {
+    res.status(401).json({ success: false, message: 'No autenticado' });
+    return;
+  }
+
+  const businessId = req.body.businessId || req.query.businessId || req.params.businessId;
+
+  if (businessId && user.businessId !== parseInt(businessId)) {
+    res.status(403).json({ success: false, message: 'Acceso denegado: no es propietario de este recurso' });
+    return;
+  }
+
   next();
 };

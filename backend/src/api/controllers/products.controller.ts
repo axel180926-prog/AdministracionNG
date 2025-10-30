@@ -67,6 +67,36 @@ export class ProductsController {
     }
   }
 
+  public static async getProductById(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+
+      const result = await pool.query(
+        'SELECT * FROM products WHERE id = $1 AND business_id = $2',
+        [id, req.user?.businessId]
+      );
+
+      if (result.rows.length === 0) {
+        res.status(404).json({
+          success: false,
+          message: 'Producto no encontrado',
+        } as ApiResponse);
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: result.rows[0],
+      } as ApiResponse<Product>);
+    } catch (error) {
+      console.error('Error al obtener producto:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al obtener el producto',
+      } as ApiResponse);
+    }
+  }
+
   public static async createProduct(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req);

@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { InventoryController } from '../controllers/inventory.controller';
+import { verifyToken } from '../middlewares/auth';
 
 const router = Router();
+
+router.use(verifyToken);
 
 router.get('/', InventoryController.getInventory);
 router.get('/summary', InventoryController.getInventorySummary);
